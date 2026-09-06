@@ -27,7 +27,9 @@ transports.
 - **native rg search transport** — ripgrep runs as a direct argv process, no
   bash round-trip per search, real ignore files and regex grammar preserved
 - **batched parallel read RPC** — `from hermes_tools import parallel([...])`,
-  1–16 read calls, ≤4 workers, input order, budgets and allowlists enforced
+  1–16 read calls, ≤4 workers, input order, budgets and allowlists enforced.
+  Measured here: **2.08x** on four searches, **1.43x** mixed; pure cheap-read
+  batches are a regression (0.5x) — batch independent *search-heavy* work
 - **streaming warm shell** — one persistent bash broker, synchronous atomic
   snapshot commit, full command-tree cancellation
 

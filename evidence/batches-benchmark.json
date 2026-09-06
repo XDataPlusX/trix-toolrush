@@ -1,0 +1,1 @@
+four_reads {'sequential': {'median_ms': 7.5, 'p95_ms': 7.6, 'cold_ms': 675.9}, 'parallel': {'median_ms': 13.7, 'p95_ms': 14.0, 'cold_ms': 14.8}, 'speedup': 0.55}

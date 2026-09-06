@@ -42,11 +42,27 @@ kill, background bypass, busy fallback, timeout reap+recover) but is
 **opt-in**: enable `warm_shell: true` only on hosts with expensive spawns
 (containers, cold caches, network filesystems).
 
-### RPC batches (ported from upstream evidence)
-Upstream measured 2.06x on four searches, 1.44x mixed, 0.98x tiny reads
-(disclosed regression), 3.34x controlled overlap. Not re-measured here (same
-code path, same executor); doctor --smoke exercises a real 2-read batch
-through execute_code on every run.
+### RPC batches (measured here, scripts/bench_batches.py, 2026-09-06)
+Real TCP RPC + generated client + real dispatch, alternating lane order,
+warm medians/p95, parity asserted per iteration (dedup + consecutive-warning
+counters neutralized for measurement):
+
+| workload | sequential | parallel() | speedup |
+|---|---:|---:|---:|
+| four content searches (real tree) | 120.4 ms | 57.9 ms | **2.08x** |
+| mixed (2 reads + 2 searches) | 55.7 ms | 38.9 ms | **1.43x** |
+| four native reads (40 lines) | 7.4 ms | 12.7 ms | **0.58x (regression)** |
+| four tiny reads | 4.2 ms | 8.8 ms | **0.47x (regression)** |
+
+Verdict: parallel() is a real 2x win for **search-heavy** batches; on this
+box native reads are so fast (~1.8 ms) that batch overhead (serialization +
+worker pool + context copy) exceeds the work — do NOT batch pure cheap
+reads (upstream's disclosed 0.98x tiny-read regression is larger here
+because Linux native reads are faster than their Windows baseline).
+
+Note: repeat reads inside one batch are treated as independent members
+(full content) while sequential repeats hit the harness read-dedup stub —
+batches are for independent calls only, per the parallel() contract.
 
 ## Lane verdicts
 
