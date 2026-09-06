@@ -1,10 +1,13 @@
 # Trix ToolRush
 
-**Status: v0.3.0 — M2+M3+M4 shipped.** Lanes live: **snapshot** (4 fail-closed
+**Status: v0.4.0 — all lanes shipped.** Lanes live: **snapshot** (4 fail-closed
 safety patches), **rpc** (`parallel()` batched reads through the real
 `execute_code` kernel — verified by doctor smoke) and **files** (12 patches:
 native rg transport + strict-JSON envelopes, stable pagination, guard
-memoization). Next: warm shell (M6). Full roadmap: `docs/PLAN.md`.
+memoization) and **shell** (streaming persistent-bash transport with
+synchronous atomic snapshot commit — opt-in: on warm Linux the measured gain
+is 1.0–1.17x, so `warm_shell: true` is recommended only for hosts with
+expensive spawns, e.g. containers). Full roadmap: `docs/PLAN.md`.
 
 Measured on warm Linux (dev box, paired on/off, medians): search transport
 9.7→9.5 ms (**1.01x**), no-match 24.7→24.6 ms (**1.00x**), discovery
