@@ -37,5 +37,24 @@ echo "staging tree at $STAGE ($(git -C "$STAGE" rev-parse --short HEAD))"
     --rename 'tools.toolrush_rpc=tools.trix_rush_rpc' \
     --rename 'ToolRush=Trix ToolRush'
 
+# files lane: selected rows only (read gating rows 4/6/7 are skipped — the
+# Linux upstream already ships native reads; wrapping them in our gates would
+# slow down installed-but-disabled deployments).
+FILES_SELECTION="$HERE/patches/files-row-selection.json"
+if [ -f "$FILES_SELECTION" ]; then
+    "$PY" "$HERE/scripts/stage_rows.py" --payload "$FILES_SELECTION" --lanes files --root "$STAGE" \
+        --rename 'tools.toolrush_rg=tools.trix_rush_rg' \
+        --rename 'tools.toolrush_runtime=tools.trix_rush_runtime' \
+        --rename "'TOOLRUSH_SEARCH'=('TRIX_TOOLRUSH_SEARCH', 'TOOLRUSH_SEARCH')" \
+        --rename 'ToolRush=Trix ToolRush'
+fi
+
+# hand-maintained patches against the live (drifted) upstream
+for patch_file in "$HERE"/patches/*.patch; do
+    [ -e "$patch_file" ] || continue
+    git -C "$STAGE" apply "$patch_file"
+    echo "applied $(basename "$patch_file")"
+done
+
 cd "$HERE"
 "$PY" build_payload.py --root "$STAGE" --baseline "$BASELINE"

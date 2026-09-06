@@ -1,5 +1,5 @@
 name: trix-toolrush
-version: 0.2.0
+version: 0.3.0
 description: "Trix ToolRush — Linux/Docker acceleration lanes for Hermes Agent (batched parallel read RPC + snapshot fail-closed safety fixes; native rg search transport and warm shell land next). Linux port of ToolRush v2 (github.com/OnlyTerp/toolrush). In-memory function-level compatibility patches, fail-closed per lane. Kill-switches: plugins.enabled removal, config trix-toolrush.enabled=false, env TRIX_TOOLRUSH_*=0 / TOOLRUSH_*=0."
 author: XDataPlus
 hooks: []

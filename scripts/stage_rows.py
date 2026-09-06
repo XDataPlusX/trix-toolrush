@@ -65,6 +65,15 @@ def find_span(tree, qualname):
     return start, node.end_lineno, node.col_offset
 
 
+def find_class_span(tree, class_name):
+    """Return (insert_after_lineno, col_offset) for appending into a class."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            insert_after = max(child.end_lineno for child in node.body)
+            return insert_after, node.body[0].col_offset
+    return None
+
+
 def apply_renames(text, renames):
     for old, new in renames:
         text = re.sub(rf'\b{re.escape(old)}\b', new, text)
@@ -93,19 +102,32 @@ def main():
             path = module_file(root, row['module'])
             text = path.read_text(encoding='utf-8')
             extracted = funcs(text)
-            if row['qualname'] not in extracted:
-                sys.exit(f'{path}: qualname {row["qualname"]!r} not found '
-                         f'(new-function insertion is not supported yet)')
             after = apply_renames(textwrap.dedent(row['after']), renames)
             tree = ast.parse(text)
-            span = find_span(tree, row['qualname'])
-            if span is None:
-                sys.exit(f'{path}: cannot locate span for {row["qualname"]!r}')
-            start, end, col = span
             lines = text.splitlines(keepends=True)
-            indent = ' ' * col
-            replacement = textwrap.indent(after.rstrip('\n') + '\n', indent)
-            new_text = ''.join(lines[:start - 1]) + replacement + ''.join(lines[end:])
+            if row['qualname'] not in extracted:
+                # New function: append at the end of the owning class (for
+                # Class.method) or the module (module-level). Deterministic
+                # insertion order = staging order.
+                parts = row['qualname'].split('.')
+                if len(parts) == 2:
+                    span = find_class_span(tree, parts[0])
+                else:
+                    span = (len(lines), 0)
+                if span is None:
+                    sys.exit(f'{path}: cannot place new function {row["qualname"]!r}')
+                insert_after, col = span
+                indent = ' ' * col
+                block = '\n\n' + textwrap.indent(after.rstrip('\n') + '\n', indent)
+                new_text = ''.join(lines[:insert_after]) + block + ''.join(lines[insert_after:])
+            else:
+                span = find_span(tree, row['qualname'])
+                if span is None:
+                    sys.exit(f'{path}: cannot locate span for {row["qualname"]!r}')
+                start, end, col = span
+                indent = ' ' * col
+                replacement = textwrap.indent(after.rstrip('\n') + '\n', indent)
+                new_text = ''.join(lines[:start - 1]) + replacement + ''.join(lines[end:])
             ast.parse(new_text)  # must stay syntactically valid
             if funcs(new_text).get(row['qualname']) != after:
                 sys.exit(f'{path}: roundtrip mismatch for {row["qualname"]!r}')

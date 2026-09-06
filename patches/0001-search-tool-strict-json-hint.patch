@@ -1,0 +1,25 @@
+diff --git a/tools/file_tools.py b/tools/file_tools.py
+index a68655d59f..7824d65d85 100644
+--- a/tools/file_tools.py
++++ b/tools/file_tools.py
+@@ -2680,13 +2680,15 @@ def search_tool(pattern: str, target: str = "content", path: str = ".",
+                 "The results have not changed. Use the information you already have."
+             )
+ 
+-        result_json = json.dumps(result_dict, ensure_ascii=False)
+-        # Hint when results were truncated — explicit next offset is clearer
+-        # than relying on the model to infer it from total_count vs match count.
++        # Guidance is metadata, not bytes after a complete JSON value:
++        # execute_code and other structured clients parse this envelope.
+         if result_dict.get("truncated"):
+             next_offset = offset + limit
+-            result_json += f"\n\n[Hint: Results truncated. Use offset={next_offset} to see more, or narrow with a more specific pattern or file_glob.]"
+-        return result_json
++            result_dict['_hint'] = (
++                f"Results truncated. Use offset={next_offset} to see more, "
++                "or narrow with a more specific pattern or file_glob."
++            )
++        return json.dumps(result_dict, ensure_ascii=False)
+     except Exception as e:
+         return tool_error(str(e))
+ 

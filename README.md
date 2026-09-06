@@ -1,10 +1,19 @@
 # Trix ToolRush
 
-**Status: v0.2.0 — M2+M3 shipped.** Lanes live: **snapshot** (4 fail-closed
-safety patches) and **rpc** (`parallel()` batched reads through the real
-`execute_code` kernel — verified by doctor smoke on the live tree). Next:
-native rg search transport (M4), warm shell (M6). Full roadmap:
-`docs/PLAN.md`.
+**Status: v0.3.0 — M2+M3+M4 shipped.** Lanes live: **snapshot** (4 fail-closed
+safety patches), **rpc** (`parallel()` batched reads through the real
+`execute_code` kernel — verified by doctor smoke) and **files** (12 patches:
+native rg transport + strict-JSON envelopes, stable pagination, guard
+memoization). Next: warm shell (M6). Full roadmap: `docs/PLAN.md`.
+
+Measured on warm Linux (dev box, paired on/off, medians): search transport
+9.7→9.5 ms (**1.01x**), no-match 24.7→24.6 ms (**1.00x**), discovery
+17.5→17.1 ms (**1.02x**) — the original ToolRush 5–7x wins were a Windows
+spawn tax; on Linux the transport is already cheap, so the files lane ships
+for **correctness** (strict JSON `_hint`, `--sort=path` stable pagination,
+honest `total_count_is_lower_bound`, unterminated-final-line count, memoized
+read-block guard) and for hosts with expensive spawns. Honest-stop verdict
+recorded in `docs/PLAN.md`.
 
 Low-overhead execution layer for [Hermes Agent](https://github.com/NousResearch/hermes-agent)
 on **Linux and Docker**, for the Trix bot fleet. Linux port of

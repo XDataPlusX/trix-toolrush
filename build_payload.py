@@ -33,6 +33,7 @@ P = Path(__file__).parent
 LANES = {
     'snapshot': ['tools/environments/base.py'],
     'rpc': ['tools/code_execution_tool.py', 'tools/code_kernel.py'],
+    'files': ['tools/file_operations.py', 'tools/file_tools.py'],
 }
 
 HELPER_DIRS = {'lib/tools': 'tools', 'lib/agent': 'agent'}
