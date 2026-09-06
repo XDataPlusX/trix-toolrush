@@ -1,9 +1,10 @@
 # Trix ToolRush
 
-**Status: M1 skeleton (work in progress).** Compatibility loader, runtime gates,
-doctor and payload builder are in place; acceleration lanes land milestone by
-milestone (see `docs/PLAN.md`). Nothing accelerates yet — the skeleton payload
-ships zero lanes and is safe to install for bootstrap verification.
+**Status: v0.2.0 — M2+M3 shipped.** Lanes live: **snapshot** (4 fail-closed
+safety patches) and **rpc** (`parallel()` batched reads through the real
+`execute_code` kernel — verified by doctor smoke on the live tree). Next:
+native rg search transport (M4), warm shell (M6). Full roadmap:
+`docs/PLAN.md`.
 
 Low-overhead execution layer for [Hermes Agent](https://github.com/NousResearch/hermes-agent)
 on **Linux and Docker**, for the Trix bot fleet. Linux port of
@@ -80,15 +81,29 @@ python ~/.hermes/plugins/trix-toolrush/doctor.py --smoke    # + real PluginManag
 
 ## Development
 
-Rebuild the compatibility payload after editing patched sources in a working
-copy of hermes-agent (build under the target runtime's Python minor):
+Rebuild the compatibility payload (stages upstream ToolRush lane rows into a
+disposable clone with Trix renames, then diffs against the git baseline):
 
 ```bash
-python build_payload.py --root /path/to/patched-hermes-agent --baseline <upstream-ref>
+scripts/rebuild_payload.sh                       # defaults: ~/.hermes/hermes-agent, HEAD
+TRIX_BUILD_PYTHON=... scripts/rebuild_payload.sh # or another target python
 ```
 
-Tests: `python -m pytest tests/ -q` (needs a Hermes checkout for lane tests;
-skeleton tests run standalone).
+Tests (need a Hermes checkout; deps come from its venv, nothing is installed
+into it):
+
+```bash
+uv venv --python <hermes>/venv/bin/python --system-site-packages /tmp/trix-test
+uv pip install --python /tmp/trix-test/bin/python pytest
+PYTHONPATH=<hermes>/venv/lib/python3.11/site-packages /tmp/trix-test/bin/python -m pytest tests/ -q
+```
+
+Port note: the upstream ToolRush payload references a class-level
+`_snapshot_exclusion_broken = False` default that its own payload never
+carries (their builder extracts functions only) — it only worked on trees
+patched on disk. Trix ToolRush's snapshot lane reads the latch defensively
+(`getattr(..., False)`) so the in-memory payload is self-sufficient. Found by
+differential testing; regression-covered by the snapshot lane tests.
 
 Roadmap and full methodology: `docs/PLAN.md`. Docker notes: `docs/DOCKER.md`.
 

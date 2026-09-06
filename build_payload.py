@@ -29,8 +29,11 @@ from pathlib import Path
 P = Path(__file__).parent
 
 # lane name -> list of module files (paths relative to the checkout root)
-# filled in as lanes ship (M2+: snapshot, rpc, files, admission, shell)
-LANES = {}
+# keep in sync with the lanes that ship in the payload
+LANES = {
+    'snapshot': ['tools/environments/base.py'],
+    'rpc': ['tools/code_execution_tool.py', 'tools/code_kernel.py'],
+}
 
 HELPER_DIRS = {'lib/tools': 'tools', 'lib/agent': 'agent'}
 
@@ -44,7 +47,7 @@ def funcs(text):
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 start = min([child.lineno] + [d.lineno for d in child.decorator_list])
                 lines = text.splitlines()
-                source = textwrap.dedent('\n'.join(lines[start - 1:child.end_lineno]))
+                source = textwrap.dedent('\n'.join(lines[start - 1:child.end_lineno])) + '\n'
                 out[prefix + child.name] = source
             elif isinstance(child, ast.ClassDef):
                 walk(child, prefix + child.name + '.')

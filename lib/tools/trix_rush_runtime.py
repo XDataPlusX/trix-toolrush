@@ -25,6 +25,8 @@ _SECTIONS = ('trix-toolrush', 'toolrush')
 
 
 def _env_killed(env_names):
+    if isinstance(env_names, str):
+        env_names = (env_names,)
     for name in env_names:
         value = os.environ.get(name)
         if value is not None and value.strip().lower() in _FALSY:

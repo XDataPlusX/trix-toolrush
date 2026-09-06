@@ -29,8 +29,9 @@ def _looks_like_hermes(candidate):
 
 def discover_hermes_root(explicit=None):
     """Explicit path > TRIX_HERMES_ROOT > HERMES_HOME/hermes-agent >
-    sibling of the plugin's parent (local ~/.hermes layout) > /opt/hermes
-    (official Docker image) > cwd."""
+    sibling of the plugin's parent (local ~/.hermes layout) > ~/.hermes/
+    hermes-agent (standard local install) > /opt/hermes (official Docker
+    image) > cwd."""
     candidates = []
     if explicit:
         candidates.append(Path(explicit))
@@ -39,6 +40,7 @@ def discover_hermes_root(explicit=None):
     if os.environ.get('HERMES_HOME'):
         candidates.append(Path(os.environ['HERMES_HOME']) / 'hermes-agent')
     candidates.append(P.parent.parent / 'hermes-agent')
+    candidates.append(Path.home() / '.hermes' / 'hermes-agent')
     candidates.append(Path('/opt/hermes'))
     candidates.append(Path.cwd())
     for candidate in candidates:
@@ -100,13 +102,58 @@ def main():
         if args.smoke:
             from hermes_cli.plugins import PluginManager, PluginManifest
             manager = PluginManager()
-            manager._load_plugin(PluginManifest(name='trix-toolrush', version='0.1.0',
+            manager._load_plugin(PluginManifest(name='trix-toolrush', version='0.2.0',
                                                 source='user', path=str(P), key='trix-toolrush'))
             loaded = manager._plugins['trix-toolrush']
             assert loaded.enabled and not loaded.error, loaded.error
             status = loaded.module._COMPAT_STATUS
             assert isinstance(status, dict), status
             result['boot'] = status if status else {'status': 'ready', 'lanes': 0}
+
+            # Prove the in-memory install never wrote to the Hermes tree.
+            import hashlib
+            targets = sorted({row['module'].replace('.', '/') + '.py'
+                              for rows in payload['lanes'].values() for row in rows})
+            before = {t: hashlib.sha256((root / t).read_bytes()).hexdigest() for t in targets}
+
+            lanes_ready = all(isinstance(v, dict) and v.get('status') == 'ready'
+                              for v in status.values()) and 'rpc' in status
+            if lanes_ready:
+                # Real execute_code batch through the generated client. The
+                # host config is patched IN THIS PROCESS ONLY so the smoke
+                # does not depend on whether the operator enabled lanes yet.
+                import hermes_cli.config as config
+                original = config.load_config_readonly
+                config.load_config_readonly = lambda: {
+                    'trix-toolrush': {'enabled': True, 'parallel_reads': True}}
+                try:
+                    from tools.code_execution_tool import execute_code
+                    from tools.code_kernel import shutdown_all_kernels
+                    code = ('from hermes_tools import parallel\n'
+                            'r = parallel(' + repr([
+                                {'tool': 'read_file', 'args': {'path': str(root / f), 'limit': 4}}
+                                for f in ('tools/file_tools.py', 'tools/file_operations.py')]) + ')\n'
+                            'assert len(r) == 2 and all("content" in x for x in r), r\n'
+                            'print("TRIX-TOOLRUSH-DOCTOR-OK")')
+                    try:
+                        output = __import__('json').loads(
+                            execute_code(code, task_id='trix-toolrush-doctor',
+                                         enabled_tools=['read_file']))
+                        result['smoke'] = {'exit_code': output.get('exit_code'),
+                                           'output': output.get('output'),
+                                           'tool_calls': output.get('tool_calls_made')}
+                        assert output.get('exit_code') == 0 \
+                            and output.get('tool_calls_made') == 2, output
+                    finally:
+                        shutdown_all_kernels()
+                finally:
+                    config.load_config_readonly = original
+
+            after = {t: hashlib.sha256((root / t).read_bytes()).hexdigest() for t in targets}
+            result['disk_unchanged'] = before == after
+            if before != after:
+                ok = False
+                result['error'] = 'install modified the Hermes tree on disk!'
     except Exception as exc:
         ok = False
         result['error'] = str(exc)
