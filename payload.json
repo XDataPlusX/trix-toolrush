@@ -1,0 +1,13 @@
+{
+ "python": [
+  3,
+  11
+ ],
+ "helpers": {
+  "tools.trix_rush_runtime": {
+   "file": "lib/tools/trix_rush_runtime.py",
+   "sha256": "1f3f35e56fed65824b0ba42ee8644b10c219f1ae0c9b98eaf8e9fc68037264a9"
+  }
+ },
+ "lanes": {}
+}
